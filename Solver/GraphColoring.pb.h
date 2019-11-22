@@ -999,7 +999,7 @@ inline void GraphColoring_Input::clear_colornum() {
 }
 inline ::google::protobuf::int32 GraphColoring_Input::colornum() const {
   // @@protoc_insertion_point(field_get:pb.GraphColoring.Input.colorNum)
-  return colornum_;
+  return colornum_ + 1;
 }
 inline void GraphColoring_Input::set_colornum(::google::protobuf::int32 value) {
   

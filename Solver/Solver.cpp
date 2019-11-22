@@ -261,6 +261,7 @@ void Solver::init() {
         aux.adjList.at(e->src()).push_back(e->dst());
         aux.adjList.at(e->dst()).push_back(e->src());
     }
+
 }
 
 bool Solver::optimize(Solution &sln, ID workerId) {
@@ -275,15 +276,109 @@ bool Solver::optimize(Solution &sln, ID workerId) {
     nodeColors.Resize(nodeNum, Problem::InvalidId);
 
     // TODO[0]: replace the following random assignment with your own algorithm.
-    for (ID n = 0; !timer.isTimeOut() && (n < nodeNum); ++n) {
-        nodeColors[n] = rand.pick(colorNum);
+	Grapthassess grapthassess(colorNum, aux.adjList, rand) ;//定义图的结构的相关简化数据结构【仇人表、颜色表...】
+	tabusearch(grapthassess);//对其进行搜索和调整（这里是禁忌算法）.
+
+    for (ID n = 0; !timer.isTimeOut() && (n < nodeNum); ++n) {//输出结果
+        //nodeColors[n] = rand.pick(colorNum);
+		nodeColors[n] = grapthassess.getcolor(n);
     }
+	
+
+
 
     sln.colorNum = input.colornum(); // record obj.
 
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
     return status;
 }
+void Solver::tabusearch(Grapthassess & grapthassess)
+{
+	ID nodeNum = input.graph().nodenum();
+	ID colorNum = input.colornum();
+	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {//贪心.
+		ObjValue bestchange = numeric_limits<ObjValue>::max();
+		ID bestnode = -1, bestcolor = -1;
+		Quantity bestcount = 0;
+		for (int i = 0; i < grapthassess.confilictNodes.size(); ++i) {//搜索所有冲突节点试图将它们改变颜色
+			ID nodeid = grapthassess.confilictNodes.idList[i];
+			for (ID color = 0; color < colorNum; ++color)
+				if (color != grapthassess.getcolor(nodeid)) {
+
+					if (grapthassess.objchange(nodeid, color) < bestchange) {
+						//获取使得FS减少最大的点和颜色
+						bestchange = grapthassess.objchange(nodeid, color);
+						bestnode = nodeid;
+						bestcolor = color;
+						bestcount = 1;
+					}
+					else if (grapthassess.objchange(nodeid, color) == bestchange) {
+						//倘若有多个相同的减少量，则随机获取任一一对
+						++bestcount;
+						if (rand.isPicked(1, bestcount)) {
+							bestnode = nodeid;
+							bestcolor = color;
+						}
+					}
+				}	
+		}
+
+		cout << "bestnode= " << bestnode << " bestcolor= " << bestcolor << " ";
+		grapthassess.change2newcolor(bestnode, bestcolor);//变色
+		cout << "FS= " << grapthassess.getconflictNum() << endl;
+		
+	}
+	return;
+}
 #pragma endregion Solver
+
+bool Solver::Grapthassess::isconflictnode(ID nodeid) const
+{
+	ID nodecolor = getcolor(nodeid);
+	return conflictTable[nodeid][nodecolor] != 0;
+}
+
+ObjValue Solver::Grapthassess::objchange(ID nodeid, ID newcolor)const
+{
+	ID oldcolor = nodeColor[nodeid];
+	return conflictTable[nodeid][newcolor]-conflictTable[nodeid][oldcolor];
+}
+
+void Solver::Grapthassess::change2newcolor(ID nodeid, ID newcolor)
+{
+	FS += objchange(nodeid, newcolor);
+
+	ID oldcolor = nodeColor[nodeid];
+	for (auto borderid : adjList[nodeid]) {
+		--conflictTable[borderid][oldcolor];
+		++conflictTable[borderid][newcolor];
+		if (isconflictnode(borderid))
+			confilictNodes.addid(borderid);
+		else
+			confilictNodes.deleteid(borderid);
+	}
+	nodeColor[nodeid] = newcolor;
+}
+
+void Solver::Grapthassess::randominit()
+{
+	//List<List<Quantity>> conflictTable;
+	//List<ID> nodeColor;
+	for (auto &node : nodeColor)
+		node = rand.pick(colorNum);
+
+	for (int nodeID = 0; nodeID < nodeNum; ++nodeID)
+		for (auto borderID : adjList[nodeID]) {
+			++conflictTable[nodeID][getcolor(borderID)];
+			if (getcolor(borderID) == getcolor(nodeID)) {
+				++FS;
+				confilictNodes.addid(nodeID);
+			}
+		}
+
+	FS /= 2;
+	return;
+
+}
 
 }

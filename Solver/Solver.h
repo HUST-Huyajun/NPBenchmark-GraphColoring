@@ -198,6 +198,37 @@ public:
 protected:
     void init();
     bool optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
+	
+	class Grapthassess {//主要基于仇人表进行评估运算.
+	public:
+		Grapthassess(Quantity colornum, const List<List<ID>>& adjList, Random& rand) 
+			:adjList(adjList) , colorNum(colornum),rand(rand),confilictNodes(adjList.size()){
+			nodeNum = adjList.size();
+			conflictTable.resize(nodeNum, List<Quantity>(colorNum, 0));
+			nodeColor.resize(nodeNum);
+			randominit();
+		};
+		ID getcolor(ID nodeid) const{ return nodeColor[nodeid]; }//获取nodeid的颜色
+		bool isconflictnode(ID nodeid)const;//查询nodeid是否是有冲突的节点
+		ObjValue objchange(ID nodeid, ID newcolor)const;//计算切换颜色的冲突数量变化量 FS+=objchange(nodeid,newcolor). 
+		ObjValue getconflictNum() const{ return FS; }//获取目前冲突的边的数目
+		void change2newcolor(ID nodeid, ID newcolor);//将一个点变成一个新颜色
+
+		ZeroBasedUnrepeteList<ID> confilictNodes;//存储冲突的节点的数据结构
+	protected:
+		void randominit();//初始化：随机将每个节点染色
+		const List<List<ID>>& adjList;//图的邻接表
+		Random& rand;//全框架的随机种子生成器
+
+		List<List<Quantity>> conflictTable;//冲突表
+		List<ID> nodeColor;//每个节点的颜色
+
+		Quantity colorNum;//总颜色数目
+		Quantity nodeNum;//总节点数目
+		ObjValue FS = 0;//冲突边的数目
+	};
+
+	void tabusearch(Grapthassess & grapthassess);
     #pragma endregion Method
 
     #pragma region Field

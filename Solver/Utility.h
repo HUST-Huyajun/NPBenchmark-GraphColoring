@@ -597,6 +597,36 @@ public:
     std::map<ArbitraryId, ConsecutiveId> idMap;
 };
 
+template<typename ConsecutiveId = int, const ConsecutiveId DefaultIdNumberHint = 1024>
+class ZeroBasedUnrepeteList {
+public:
+	ZeroBasedUnrepeteList(size_t size = DefaultIdNumberHint) { init(size); }
+	void init(size_t size = DefaultIdNumberHint) { tail = 0; idIndex.resize(size, -1); idList.resize(size, -1); }
+	std::vector< ConsecutiveId > idList;//strore the ids;
+	ConsecutiveId size() { return tail; }//only read idList[0,size) is legal.
+	bool addid(ConsecutiveId id) {
+		if (id >= ConsecutiveId(idIndex.size()) || idIndex[id] != -1)return false;//不支持重复贮存相同ID
+		/*后续判断越界自动扩容*/
+		idList[tail] = id;
+		idIndex[id] = tail;
+		tail++;
+		return true;
+	}
+	bool deleteid(ConsecutiveId id) {
+		if (!exist(id) || tail == 0 || id >= ConsecutiveId(idIndex.size()))return false;
+		idIndex[idList[tail - 1]] = idIndex[id];
+		idList[idIndex[id]] = idList[tail - 1];
+		idList[tail - 1] = -1;
+		idIndex[id] = -1;
+		tail--;
+		return true;
+	}
+	bool exist(ConsecutiveId id) { return idIndex[id] != -1; }
+	bool clear() { tail = 0; return true; }
+protected:
+	std::vector< ConsecutiveId > idIndex;//if idIndex[i]=j,then idList[j]=i.idIndex.  &   id[i]= -1 means i is not in idList.
+	ConsecutiveId tail;//idList[tail] is empty.
+};
 
 template<typename Unit>
 struct Interval {

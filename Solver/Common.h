@@ -26,6 +26,10 @@ using Coord = Length;
 using Duration = int;
 // number of neighborhood moves in local search.
 using Iteration = int;
+// the unit of Quantity.
+using Quantity = int;
+
+using ObjValue = int;
 
 template<typename T>
 using List = std::vector<T>;
