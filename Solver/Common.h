@@ -28,8 +28,10 @@ using Duration = int;
 using Iteration = int;
 // the unit of Quantity.
 using Quantity = int;
-
+// the unit of objective function's value.
 using ObjValue = int;
+//the unit of tabustep
+using TabuTime = int;
 
 template<typename T>
 using List = std::vector<T>;

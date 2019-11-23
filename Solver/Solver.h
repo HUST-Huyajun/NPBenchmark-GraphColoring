@@ -229,6 +229,7 @@ protected:
 	};
 
 	void tabusearch(Grapthassess & grapthassess);
+	TabuTime get_tabustep(TabuTime t) { return rand.pick(10); }
     #pragma endregion Method
 
     #pragma region Field

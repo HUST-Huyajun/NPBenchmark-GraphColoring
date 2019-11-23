@@ -296,14 +296,17 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 {
 	ID nodeNum = input.graph().nodenum();
 	ID colorNum = input.colornum();
+	List<List<TabuTime>> tabulist(nodeNum, vector<TabuTime>(colorNum, 0));
+	/*
 	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {//贪心.
 		ObjValue bestchange = numeric_limits<ObjValue>::max();
 		ID bestnode = -1, bestcolor = -1;
 		Quantity bestcount = 0;
 		for (int i = 0; i < grapthassess.confilictNodes.size(); ++i) {//搜索所有冲突节点试图将它们改变颜色
 			ID nodeid = grapthassess.confilictNodes.idList[i];
-			for (ID color = 0; color < colorNum; ++color)
-				if (color != grapthassess.getcolor(nodeid)) {
+			for (ID color = 0; color < colorNum; ++color){
+				if (color == grapthassess.getcolor(nodeid))
+					continue;
 
 					if (grapthassess.objchange(nodeid, color) < bestchange) {
 						//获取使得FS减少最大的点和颜色
@@ -312,21 +315,67 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 						bestcolor = color;
 						bestcount = 1;
 					}
-					else if (grapthassess.objchange(nodeid, color) == bestchange) {
+					else if (grapthassess.objchange(nodeid, color) == bestchange
+						&& rand.isPicked(1, ++bestcount)) {
 						//倘若有多个相同的减少量，则随机获取任一一对
-						++bestcount;
-						if (rand.isPicked(1, bestcount)) {
 							bestnode = nodeid;
 							bestcolor = color;
-						}
 					}
-				}	
+			}
 		}
 
 		cout << "bestnode= " << bestnode << " bestcolor= " << bestcolor << " ";
 		grapthassess.change2newcolor(bestnode, bestcolor);//变色
 		cout << "FS= " << grapthassess.getconflictNum() << endl;
+	}
+	*/
+	
+	TabuTime t = 0;
+	ObjValue bestFS = grapthassess.getconflictNum();
+
+	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {//禁忌.
+		ObjValue bestchange = numeric_limits<ObjValue>::max();
+		ID bestnode = -1, bestcolor = -1;
+		Quantity bestcount = 0;
+		for (int i = 0; i < grapthassess.confilictNodes.size(); ++i) {//搜索所有冲突节点试图将它们改变颜色
+			ID nodeid = grapthassess.confilictNodes.idList[i];
+			for (ID color = 0; color < colorNum; ++color) {
+				if (color == grapthassess.getcolor(nodeid))//必须要变色
+					continue;
+				if (tabulist[nodeid][color] <= t
+					|| grapthassess.getconflictNum() + grapthassess.objchange(nodeid, color) < bestFS) {
+					//没有禁忌 + 解禁策略
+
+					if (grapthassess.objchange(nodeid, color) < bestchange) {
+						//获取使得FS减少最大的点和颜色
+						bestchange = grapthassess.objchange(nodeid, color);
+						bestnode = nodeid;
+						bestcolor = color;
+						bestcount = 1;
+					}
+					else if (grapthassess.objchange(nodeid, color) == bestchange
+						&& rand.isPicked(1, ++bestcount)) {
+						//倘若有多个相同的减少量，则随机获取任一一对
+							bestnode = nodeid;
+							bestcolor = color;
+					}
+				}
+
+
+			}
+				
+		}
 		
+		//cout << "bestnode = " << bestnode << " bestcolor = " << bestcolor <<" t = "<<t;
+		ID oldcolor = grapthassess.getcolor(bestnode);
+		//tabulist[bestnode][bestcolor] = get_tabustep(t) + t;//加入禁忌
+		tabulist[bestnode][oldcolor] = get_tabustep(t) + t++;//加入禁忌
+		grapthassess.change2newcolor(bestnode, bestcolor);//点变色
+		if (bestFS > grapthassess.getconflictNum())
+			cout << "bestFS = " << grapthassess.getconflictNum() <<" t = "<< t << endl;
+		bestFS = min(bestFS, grapthassess.getconflictNum());//更新最优解
+
+		//cout << " FS= " << grapthassess.getconflictNum() << endl;
 	}
 	return;
 }
