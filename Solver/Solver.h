@@ -202,11 +202,14 @@ protected:
 	class Grapthassess {//主要基于仇人表进行评估运算.
 	public:
 		Grapthassess(Quantity colornum, const List<List<ID>>& adjList, Random& rand) 
-			:adjList(adjList) , colorNum(colornum),rand(rand),confilictNodes(adjList.size()){
-			nodeNum = adjList.size();
-			conflictTable.resize(nodeNum, List<Quantity>(colorNum, 0));
-			nodeColor.resize(nodeNum);
-			randominit();
+			:adjList(adjList) , colorNum(colornum),rand(rand),confilictNodes(adjList.size()),nodeNum(adjList.size()){
+
+			randomcoloring();
+			init();
+		};
+		void setcolor(const List<ID>& nodeColor) {//设置不同颜色.不能改变颜色数目
+			this->nodeColor = nodeColor;
+			init();
 		};
 		ID getcolor(ID nodeid) const{ return nodeColor[nodeid]; }//获取nodeid的颜色
 		bool isconflictnode(ID nodeid)const;//查询nodeid是否是有冲突的节点
@@ -216,7 +219,8 @@ protected:
 
 		ZeroBasedUnrepeteList<ID> confilictNodes;//存储冲突的节点的数据结构
 	protected:
-		void randominit();//初始化：随机将每个节点染色
+		void randomcoloring();//初始化：随机将每个节点染色
+		void init();
 		const List<List<ID>>& adjList;//图的邻接表
 		Random& rand;//全框架的随机种子生成器
 
@@ -225,11 +229,13 @@ protected:
 
 		Quantity colorNum;//总颜色数目
 		Quantity nodeNum;//总节点数目
-		ObjValue FS = 0;//冲突边的数目
+		ObjValue FS;//冲突边的数目
 	};
 
-	void tabusearch(Grapthassess & grapthassess);
+	void tabusearch(Grapthassess & grapthassess,const Timer& timer);
 	TabuTime get_tabustep(TabuTime t) { return rand.pick(10); }
+	void crossover_operator(const Grapthassess& s1, const Grapthassess& s2, Grapthassess& mixeds);
+	void hybird_evoluation(Grapthassess & grapthassess,Quantity populations, Duration tabu_time);
     #pragma endregion Method
 
     #pragma region Field

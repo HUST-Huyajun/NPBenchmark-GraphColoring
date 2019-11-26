@@ -277,9 +277,13 @@ bool Solver::optimize(Solution &sln, ID workerId) {
 
     // TODO[0]: replace the following random assignment with your own algorithm.
 	Grapthassess grapthassess(colorNum, aux.adjList, rand) ;//定义图的结构的相关简化数据结构【仇人表、颜色表...】
-	tabusearch(grapthassess);//对其进行搜索和调整（这里是禁忌算法）.
 
-    for (ID n = 0; !timer.isTimeOut() && (n < nodeNum); ++n) {//输出结果
+	//Timer timer_tabu(std::chrono::milliseconds(env.msTimeout));
+	//tabusearch(grapthassess, timer_tabu);//对其进行搜索和调整（这里是禁忌算法）.
+
+	hybird_evoluation(grapthassess, 8, 10*1000);//进化算法
+
+    for (ID n = 0; (n < nodeNum); ++n) {//输出结果
         //nodeColors[n] = rand.pick(colorNum);
 		nodeColors[n] = grapthassess.getcolor(n);
     }
@@ -292,7 +296,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
     return status;
 }
-void Solver::tabusearch(Grapthassess & grapthassess)
+void Solver::tabusearch(Grapthassess & grapthassess,const Timer& timer)
 {
 	ID nodeNum = input.graph().nodenum();
 	ID colorNum = input.colornum();
@@ -332,9 +336,7 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 	
 	TabuTime t = 0;
 	ObjValue bestFS = grapthassess.getconflictNum();
-
 	
-
 	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {//禁忌.
 		ObjValue bestchange = numeric_limits<ObjValue>::max();
 		ID bestnode = -1, bestcolor = -1;
@@ -374,15 +376,145 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 		tabulist[bestnode][oldcolor] = grapthassess.getconflictNum() + get_tabustep(t) + t++;//加入禁忌
 
 		grapthassess.change2newcolor(bestnode, bestcolor);//点变色
-		if (bestFS > grapthassess.getconflictNum() && bestFS <= 20)
-			cout << "bestFS = " << grapthassess.getconflictNum() <<" t = "<< t <<endl;
+		/*if (bestFS > grapthassess.getconflictNum() && bestFS <= 20)
+			cout << "bestFS = " << grapthassess.getconflictNum() <<" t = "<< t <<endl;*/
 		bestFS = min(bestFS, grapthassess.getconflictNum());//更新最优解
-		/*if (bestFS < 50) {
-			cout << "node " << bestnode << "  color " << bestcolor << endl;
-		}*/
 		//cout << " FS= " << grapthassess.getconflictNum() << endl;
 	}
 	return;
+}
+void Solver::crossover_operator(const Grapthassess & s0, const Grapthassess & s1, Grapthassess & mixeds)
+{
+	ID nodeNum = input.graph().nodenum();
+	ID colorNum = input.colornum();
+	vector<bool>is_select(nodeNum, false);//点是否被选过
+	vector<vector<Quantity>>s_color_cnt(2, vector<int>(colorNum, 0));
+
+	vector<int>mixeds_color(nodeNum, -1);//保存解.
+
+	for (ID nodeid = 0; nodeid < nodeNum; ++nodeid) {
+		++s_color_cnt[0][s0.getcolor(nodeid)];
+		++s_color_cnt[1][s1.getcolor(nodeid)];
+	}
+	bool select_id = rand.isPicked(1, 2);
+	for (ID colorid = 0; colorid < colorNum; ++colorid) {//每次给mixeds涂一个颜色.
+		ID select_color = -1;
+		Quantity maxcnt = -1;
+		Quantity cnt = 0;
+		for (ID i = 0; i < colorNum; ++i) {//选择哪个颜色块下移
+			if (s_color_cnt[select_id].at(i) > maxcnt) {
+				maxcnt = s_color_cnt[select_id].at(i);
+				select_color = i;
+				cnt = 1;
+			}
+			else if (s_color_cnt[select_id].at(i) == maxcnt
+				&& rand.isPicked(1, ++cnt)) {
+				select_color = i;
+			}
+		}
+		const Grapthassess & s = select_id ? s1 : s0;
+		for (ID nodeid = 0; nodeid < nodeNum; ++nodeid)
+			if (s.getcolor(nodeid) == select_color
+				&& is_select[nodeid] == false) {//寻找这个解的颜色块的点 要求：没被选过
+
+				mixeds_color[nodeid] = colorid;//给这个点涂上mixeds的颜色
+				is_select[nodeid] = true;
+				--s_color_cnt[0][s0.getcolor(nodeid)];
+				--s_color_cnt[1][s1.getcolor(nodeid)];
+			}
+
+		select_id = !select_id;//换一方选择.
+	}
+
+	for (ID nodeid = 0; nodeid < nodeNum; ++nodeid)
+		if (is_select[nodeid] == false)//最后没被选的点随机染色即可
+			mixeds_color[nodeid] = rand.pick(colorNum);
+
+	mixeds.setcolor(mixeds_color);
+	return;
+}
+void Solver::hybird_evoluation(Grapthassess & grapthassess, Quantity populations, Duration tabu_time)//tabu_time is millonsecond
+{
+	double one_tabu_time = tabu_time/1000.0;//second
+	one_tabu_time = 1;//to debug and test.
+	ID nodeNum = input.graph().nodenum();
+	ID colorNum = input.colornum();
+	vector<Grapthassess>ans(populations, grapthassess);
+
+	vector<ID>nodecolor(nodeNum, -1);
+	for (int i = 0; i < populations; ++i) {
+		for (auto& n : nodecolor)
+			n = rand.pick(colorNum);
+		ans[i].setcolor(nodecolor);
+		//Timer timer_tabu(std::chrono::milliseconds(timer.toMillisecond(one_tabu_time)));
+		//tabusearch(ans[i], timer_tabu);
+		//if (ans[i].getconflictNum() == 0) {
+		//	for (ID nodeid = 0; nodeid < nodeNum; ++nodeid)//进行族群替换
+		//		nodecolor[nodeid] = ans[i].getcolor(nodeid);
+		//	grapthassess.setcolor(nodecolor);
+		//	return;
+		//}
+	}
+	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {
+		ID id1 = 0, id2 = 0;
+		Quantity cnt = 0;
+		ObjValue best = numeric_limits<ObjValue>::max();
+		for (ID i = 0; i < populations; ++i) {
+			if (best > ans[i].getconflictNum()) {
+				best = ans[i].getconflictNum();
+				id1 = i;
+				cnt = 1;
+			}
+			else if (best == ans[i].getconflictNum()
+				&& rand.isPicked(1, ++cnt)) {
+				id1 = i;
+			}
+		}
+		cout << "bestFS = " << ans[id1].getconflictNum() << endl;
+		for (ID i = 0; i < populations; ++i) {
+			if (i == id1)continue;
+			if (best > ans[i].getconflictNum()) {
+				best = ans[i].getconflictNum();
+				id2 = i;
+				cnt = 1;
+			}
+			else if (best == ans[i].getconflictNum()
+				&& rand.isPicked(1, ++cnt)) {
+				id2 = i;
+			}
+		}
+		crossover_operator(ans[id1], ans[id2], grapthassess);//交叉算符
+		Timer timer_tabu(std::chrono::milliseconds(timer.toMillisecond(one_tabu_time)));
+		tabusearch(grapthassess, timer_tabu);
+		if (grapthassess.getconflictNum() == 0)break;
+
+		if (grapthassess.getconflictNum() > ans[id1].getconflictNum() 
+			&& grapthassess.getconflictNum() > ans[id2].getconflictNum())//没有变得更好就不更新族群。
+			continue;
+
+		ID id3 = 0;//找最差的种子.
+		cnt = 0;
+		best = -1;
+		for (ID i = 0; i < populations; ++i) {
+			//if (i == id1)continue;
+			//if (i == id2)continue;
+			if (best < ans[i].getconflictNum()) {
+				best = ans[i].getconflictNum();
+				id3 = i;
+				cnt = 1;
+			}
+			else if (best == ans[i].getconflictNum()
+				&& rand.isPicked(1, ++cnt)) {
+				id3 = i;
+			}
+		}
+
+		for (ID nodeid = 0; nodeid < nodeNum; ++nodeid)//进行族群替换
+			nodecolor[nodeid] = grapthassess.getcolor(nodeid);
+		ans[id3].setcolor(nodecolor);
+	}
+	return;
+
 }
 #pragma endregion Solver
 
@@ -416,13 +548,25 @@ void Solver::Grapthassess::change2newcolor(ID nodeid, ID newcolor)
 		confilictNodes.deleteid(nodeid);
 }
 
-void Solver::Grapthassess::randominit()
+void Solver::Grapthassess::randomcoloring()
 {
 	//List<List<Quantity>> conflictTable;
 	//List<ID> nodeColor;
+	nodeColor.resize(nodeNum);
 	for (auto &node : nodeColor)
 		node = rand.pick(colorNum);
 
+	return;
+
+}
+
+void Solver::Grapthassess::init()
+{
+	confilictNodes.clear();
+	conflictTable.clear();
+	conflictTable.resize(nodeNum, List<Quantity>(colorNum, 0));
+
+	FS = 0;
 	for (int nodeID = 0; nodeID < nodeNum; ++nodeID)
 		for (auto borderID : adjList[nodeID]) {
 			++conflictTable[nodeID][getcolor(borderID)];
@@ -433,8 +577,6 @@ void Solver::Grapthassess::randominit()
 		}
 
 	FS /= 2;
-	return;
-
 }
 
 }

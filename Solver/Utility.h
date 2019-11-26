@@ -622,7 +622,7 @@ public:
 		return true;
 	}
 	bool exist(ConsecutiveId id) { return idIndex[id] != -1; }
-	bool clear() { tail = 0; return true; }
+	bool clear() { tail = 0; auto size = idIndex.size(); idIndex.clear(); idIndex.resize(size, -1); return true; }
 protected:
 	std::vector< ConsecutiveId > idIndex;//if idIndex[i]=j,then idList[j]=i.idIndex.  &   id[i]= -1 means i is not in idList.
 	ConsecutiveId tail;//idList[tail] is empty.
