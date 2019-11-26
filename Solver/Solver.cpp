@@ -333,6 +333,8 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 	TabuTime t = 0;
 	ObjValue bestFS = grapthassess.getconflictNum();
 
+	
+
 	while (!timer.isTimeOut() && grapthassess.getconflictNum()) {//禁忌.
 		ObjValue bestchange = numeric_limits<ObjValue>::max();
 		ID bestnode = -1, bestcolor = -1;
@@ -369,12 +371,15 @@ void Solver::tabusearch(Grapthassess & grapthassess)
 		//cout << "bestnode = " << bestnode << " bestcolor = " << bestcolor <<" t = "<<t;
 		ID oldcolor = grapthassess.getcolor(bestnode);
 		//tabulist[bestnode][bestcolor] = get_tabustep(t) + t;//加入禁忌
-		tabulist[bestnode][oldcolor] = get_tabustep(t) + t++;//加入禁忌
-		grapthassess.change2newcolor(bestnode, bestcolor);//点变色
-		if (bestFS > grapthassess.getconflictNum())
-			cout << "bestFS = " << grapthassess.getconflictNum() <<" t = "<< t << endl;
-		bestFS = min(bestFS, grapthassess.getconflictNum());//更新最优解
+		tabulist[bestnode][oldcolor] = grapthassess.getconflictNum() + get_tabustep(t) + t++;//加入禁忌
 
+		grapthassess.change2newcolor(bestnode, bestcolor);//点变色
+		if (bestFS > grapthassess.getconflictNum() && bestFS <= 20)
+			cout << "bestFS = " << grapthassess.getconflictNum() <<" t = "<< t <<endl;
+		bestFS = min(bestFS, grapthassess.getconflictNum());//更新最优解
+		/*if (bestFS < 50) {
+			cout << "node " << bestnode << "  color " << bestcolor << endl;
+		}*/
 		//cout << " FS= " << grapthassess.getconflictNum() << endl;
 	}
 	return;
@@ -407,6 +412,8 @@ void Solver::Grapthassess::change2newcolor(ID nodeid, ID newcolor)
 			confilictNodes.deleteid(borderid);
 	}
 	nodeColor[nodeid] = newcolor;
+	if (!isconflictnode(nodeid))//要判断node本身是否变为非冲突。
+		confilictNodes.deleteid(nodeid);
 }
 
 void Solver::Grapthassess::randominit()

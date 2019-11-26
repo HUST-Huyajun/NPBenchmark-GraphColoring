@@ -605,20 +605,20 @@ public:
 	std::vector< ConsecutiveId > idList;//strore the ids;
 	ConsecutiveId size() { return tail; }//only read idList[0,size) is legal.
 	bool addid(ConsecutiveId id) {
-		if (id >= ConsecutiveId(idIndex.size()) || idIndex[id] != -1)return false;//不支持重复贮存相同ID
+		//if (id >= ConsecutiveId(idIndex.size()) || idIndex[id] != -1)return false;//不支持重复贮存相同ID
+		if (idIndex[id] != -1)return false;//不支持重复贮存相同ID
 		/*后续判断越界自动扩容*/
 		idList[tail] = id;
-		idIndex[id] = tail;
-		tail++;
+		idIndex[id] = tail++;
 		return true;
 	}
 	bool deleteid(ConsecutiveId id) {
-		if (!exist(id) || tail == 0 || id >= ConsecutiveId(idIndex.size()))return false;
+		//if (!exist(id) || tail == 0 || id >= ConsecutiveId(idIndex.size()))return false;
+		if (!exist(id) || tail == 0)return false;
 		idIndex[idList[tail - 1]] = idIndex[id];
 		idList[idIndex[id]] = idList[tail - 1];
-		idList[tail - 1] = -1;
 		idIndex[id] = -1;
-		tail--;
+		idList[--tail] = -1;
 		return true;
 	}
 	bool exist(ConsecutiveId id) { return idIndex[id] != -1; }

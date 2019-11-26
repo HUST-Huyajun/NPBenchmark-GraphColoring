@@ -117,7 +117,7 @@ void Simulator::run(const String &envPath) {
 void Simulator::debug() {
     Task task;
     task.instSet = "";
-    task.instId = "dsjc.n125e736c5";
+    task.instId = "dsjc.n500e12458c12";
     task.randSeed = "1500972793";
     //task.randSeed = to_string(RandSeed::generate());
     task.timeout = "180";
@@ -135,7 +135,7 @@ void Simulator::benchmark(int repeat) {
     task.instSet = "";
     //task.timeout = "180";
     //task.maxIter = "1000000000";
-    task.timeout = "3600";
+    task.timeout = "180";
     //task.maxIter = "1000000000";
     task.jobNum = "1";
     task.cfgPath = Env::DefaultCfgPath();
